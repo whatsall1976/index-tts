@@ -4,19 +4,19 @@
 </div>
 
 
-<h2><center>IndexTTS: An Industrial-Level Controllable and Efficient Zero-Shot Text-To-Speech System</h2>
+<h2><center>IndexTTS2: A Breakthrough in Emotionally Expressive and Duration-Controlled Auto-Regressive Zero-Shot Text-to-Speech</h2>
 
 <p align="center">
 <a href='https://arxiv.org/abs/2502.05512'><img src='https://img.shields.io/badge/ArXiv-2502.05512-red'></a>
 
-## 👉🏻 IndexTTS 👈🏻
+## 👉🏻 IndexTTS2 👈🏻
 
 [[HuggingFace Demo]](https://huggingface.co/spaces/IndexTeam/IndexTTS)   [[ModelScope Demo]](https://modelscope.cn/studios/IndexTeam/IndexTTS-Demo) \
-[[Paper]](https://arxiv.org/abs/2502.05512)  [[Demos]](https://index-tts.github.io)  
+[[Paper]](https://arxiv.org/abs/2502.05512)  [[Demos]](https://index-tts.github.io/index-tts2.github.io/)  
 
-**IndexTTS** is a GPT-style text-to-speech (TTS) model mainly based on XTTS and Tortoise. It is capable of correcting the pronunciation of Chinese characters using pinyin and controlling pauses at any position through punctuation marks. We enhanced multiple modules of the system, including the improvement of speaker condition feature representation, and the integration of BigVGAN2 to optimize audio quality. Trained on tens of thousands of hours of data, our system achieves state-of-the-art performance, outperforming current popular TTS systems such as XTTS, CosyVoice2, Fish-Speech, and F5-TTS.
+Large-scale text-to-speech (TTS)  models are typically categorized into autoregressive and non-autoregressive systems. Although autoregressive systems exhibit certain advantages in speech naturalness, their token-by-token generation mechanism makes it difficult to precisely control the duration of the synthesized speech. This becomes a significant limitation in applications such as video dubbing, where strict audio-visual synchronization is required. This paper introduces IndexTTS2, which proposes a novel, general, and autoregressive-model-friendly method for speech duration control. The method supports two generation modes: one allows explicit specification of the number of generated tokens, thereby enabling precise control over speech duration; the other does not require manual token count input, letting the model freely generate speech in an autoregressive manner while faithfully reproducing prosodic characteristics from the input prompt. Furthermore, IndexTTS2 achieves disentanglement between emotional expression and speaker identity, enabling independent control of timbre and emotion. In the zero-shot setting, the model is capable of perfectly reproducing the emotional characteristics inherent in the input prompt. Additionally, users may provide a separate emotion prompt (which can originate from a different speaker than the timbre prompt), thereby enabling the model to accurately reconstruct the target timbre while conveying the specified emotional tone. In order to enhance the clarity of speech during strong emotional expressions, we incorporate GPT latent representations to improve the stability of the generated speech. Meanwhile, to lower the barrier for emotion control, we design a soft instruction mechanism based on textual descriptions by fine-tuning Qwen3. This facilitates the effective guidance of speech generation with the desired emotional tendencies through natural language input. Finally, experimental results on multiple datasets demonstrate that IndexTTS2 outperforms existing state-of-the-art zero-shot TTS models in terms of word error rate, speaker similarity, and emotional fidelity. To promote further research and facilitate practical adoption, we will release both the model weights and inference code, enabling the community to reproduce and build upon our work.
 <span style="font-size:16px;">  
-Experience **IndexTTS**: Please contact <u>xuanwu@bilibili.com</u> for more detailed information. </span>
+Experience **IndexTTS**: Please contact <u>zhousiyi02@bilibili.com</u> <u>zhouxun@bilibili.com</u> for more detailed information. </span>
 ### Contact
 QQ群（二群）：1048202584 \
 Discord：https://discord.gg/uT32E7KDmy  \
@@ -24,6 +24,9 @@ Discord：https://discord.gg/uT32E7KDmy  \
 欢迎大家来交流讨论！
 ## 📣 Updates
 
+- `2025/06/10` 🔥🔥🔥  We release the **IndexTTS2**
+    - The first autoregressive TTS model with precise synthesis duration control: supporting both controllable and uncontrollable modes 
+    - The model achieves highly expressive emotional speech synthesis, with emotion-controllable capabilities enabled through multiple input modalities.
 - `2025/05/14` 🔥🔥 We release the **IndexTTS-1.5**, Significantly improve the model's stability and its performance in the English language.
 - `2025/03/25` 🔥 We release IndexTTS-1.0 model parameters and inference code.
 - `2025/02/12` 🔥 We submitted our paper on arXiv, and released our demos and test sets.
@@ -37,78 +40,19 @@ The overview of IndexTTS is shown as follows.
 </picture>
 
 
-The main improvements and contributions are summarized as follows:
- - In Chinese scenarios, we have introduced a character-pinyin hybrid modeling approach. This allows for quick correction of mispronounced characters.
- - **IndexTTS** incorporate a conformer conditioning encoder and a BigVGAN2-based speechcode decoder. This improves training stability, voice timbre similarity, and sound quality.
- - We release all test sets here, including those for polysyllabic words, subjective and objective test sets.
+The key contributions of **indextts2** are summarized as follows:
+ - We propose a novel and heuristic duration adaptation scheme for autoregressive large-scale TTS models. IndexTTS2 is the first autoregressive zero-shot TTS model that combines precise duration control with free generation of natural durations, striking a balance between flexibility, controllability and autoregressive nature.
+ - The emotional and speaker-related features are decoupled from the prompts, and a feature fusion strategy is designed to maintain semantic fluency and pronunciation clarity during emotionally rich expressions. Furthermore, a tool was developed for emotion control, utilising natural language descriptions for the benefit of users.
+ - We publicly release the code and pre-trained weights to facilitate future research and practical applications.
 
 
 
 ## Model Download
-| 🤗**HuggingFace**                                          | **ModelScope** |
+| **HuggingFace**                                          | **ModelScope** |
 |----------------------------------------------------------|----------------------------------------------------------|
+| [😁 IndexTTS2](https://huggingface.co/IndexTeam/IndexTTS-1.5) | [IndexTTS-1.5](https://modelscope.cn/models/IndexTeam/IndexTTS-1.5) |
+| [IndexTTS-1.5](https://huggingface.co/IndexTeam/IndexTTS-1.5) | [IndexTTS-1.5](https://modelscope.cn/models/IndexTeam/IndexTTS-1.5) |
 | [IndexTTS](https://huggingface.co/IndexTeam/Index-TTS) | [IndexTTS](https://modelscope.cn/models/IndexTeam/Index-TTS) |
-| [😁IndexTTS-1.5](https://huggingface.co/IndexTeam/IndexTTS-1.5) | [IndexTTS-1.5](https://modelscope.cn/models/IndexTeam/IndexTTS-1.5) |
-
-
-## 📑 Evaluation
-
-**Word Error Rate (WER) Results for IndexTTS and Baseline Models on the** [**seed-test**](https://github.com/BytedanceSpeech/seed-tts-eval)
-
-| **WER**                | **test_zh** | **test_en** | **test_hard** |
-|:----------------------:|:-----------:|:-----------:|:-------------:|
-| **Human**              | 1.26        | 2.14        | -             |
-| **SeedTTS**            | 1.002       | 1.945       | **6.243**     |
-| **CosyVoice 2**        | 1.45        | 2.57        | 6.83          |
-| **F5TTS**              | 1.56        | 1.83        | 8.67          |
-| **FireRedTTS**         | 1.51        | 3.82        | 17.45         |
-| **MaskGCT**            | 2.27        | 2.62        | 10.27         |
-| **Spark-TTS**          | 1.2         | 1.98        | -             |
-| **MegaTTS 3**          | 1.36        | 1.82        | -             |
-| **IndexTTS**           | 0.937       | 1.936       | 6.831         |
-| **IndexTTS-1.5**       | **0.821**   | **1.606**   | 6.565         |
-
-
-**Word Error Rate (WER) Results for IndexTTS and Baseline Models on the other opensource test**
-
-
-|    **Model**    | **aishell1_test** | **commonvoice_20_test_zh** | **commonvoice_20_test_en** | **librispeech_test_clean** |  **avg** |
-|:---------------:|:-----------------:|:--------------------------:|:--------------------------:|:--------------------------:|:--------:|
-|    **Human**    |        2.0        |            9.5             |            10.0            |            2.4             |   5.1    |
-| **CosyVoice 2** |        1.8        |            9.1             |            7.3             |            4.9             |   5.9    |
-|    **F5TTS**    |        3.9        |            11.7            |            5.4             |            7.8             |   8.2    |
-|  **Fishspeech** |        2.4        |            11.4            |            8.8             |            8.0             |   8.3    |
-|  **FireRedTTS** |        2.2        |            11.0            |            16.3            |            5.7             |   7.7    |
-|     **XTTS**    |        3.0        |            11.4            |            7.1             |            3.5             |   6.0    |
-|   **IndexTTS**  |      1.3          |          7.0               |            5.3             |          2.1             | 3.7       |
-|   **IndexTTS-1.5**  |      **1.2**     |          **6.8**          |          **3.9**          |          **1.7**          | **3.1** |
-
-
-**Speaker Similarity (SS) Results for IndexTTS and Baseline Models**
-
-|    **Model**    | **aishell1_test** | **commonvoice_20_test_zh** | **commonvoice_20_test_en** | **librispeech_test_clean** |  **avg**  |
-|:---------------:|:-----------------:|:--------------------------:|:--------------------------:|:--------------------------:|:---------:|
-|    **Human**    |       0.846       |            0.809           |            0.820           |            0.858           |   0.836   |
-| **CosyVoice 2** |     **0.796**     |            0.743           |            0.742           |          **0.837**         | **0.788** |
-|    **F5TTS**    |       0.743       |          **0.747**         |            0.746           |            0.828           |   0.779   |
-|  **Fishspeech** |       0.488       |            0.552           |            0.622           |            0.701           |   0.612   |
-|  **FireRedTTS** |       0.579       |            0.593           |            0.587           |            0.698           |   0.631   |
-|     **XTTS**    |       0.573       |            0.586           |            0.648           |            0.761           |   0.663   |
-|   **IndexTTS**  |       0.744       |            0.742           |          **0.758**         |            0.823           |   0.776   |
-|   **IndexTTS-1.5**  |       0.741       |            0.722           |          0.753         |            0.819           |   0.771   |
-
-
-
-**MOS Scores for Zero-Shot Cloned Voice**
-
-| **Model**       | **Prosody** | **Timbre** | **Quality** |  **AVG**  |
-|-----------------|:-----------:|:----------:|:-----------:|:---------:|
-| **CosyVoice 2** |    3.67     |    4.05    |    3.73     |   3.81    |
-| **F5TTS**       |    3.56     |    3.88    |    3.56     |   3.66    |
-| **Fishspeech**  |    3.40     |    3.63    |    3.69     |   3.57    |
-| **FireRedTTS**  |    3.79     |    3.72    |    3.60     |   3.70    |
-| **XTTS**        |    3.23     |    2.99    |    3.10     |   3.11    |
-| **IndexTTS**    |    **3.79**     |    **4.20**    |    **4.05**     |   **4.01**    |
 
 
 ## Usage Instructions
@@ -118,36 +62,10 @@ The main improvements and contributions are summarized as follows:
 git clone https://github.com/index-tts/index-tts.git
 ```
 2. Install dependencies:
-
-Create a new conda environment and install dependencies:
- 
 ```bash
-conda create -n index-tts python=3.10
-conda activate index-tts
-apt-get install ffmpeg
-# or use conda to install ffmpeg
-conda install -c conda-forge ffmpeg
-```
-
-Install [PyTorch](https://pytorch.org/get-started/locally/), e.g.:
-```bash
-pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
-```
-
-> [!NOTE]
-> If you are using Windows you may encounter [an error](https://github.com/index-tts/index-tts/issues/61) when installing `pynini`:
-`ERROR: Failed building wheel for pynini`
-> In this case, please install `pynini` via `conda`:
-> ```bash
-> # after conda activate index-tts
-> conda install -c conda-forge pynini==2.1.6
-> pip install WeTextProcessing --no-deps
-> ```
-
-Install `IndexTTS` as a package:
-```bash
-cd index-tts
-pip install -e .
+conda create -n indextts2 python=3.10
+conda activate indextts2
+pip install -r requirements.txt
 ```
 
 3. Download models:
@@ -177,22 +95,80 @@ wget https://huggingface.co/IndexTeam/IndexTTS-1.5/resolve/main/unigram_12000.vo
 wget https://huggingface.co/IndexTeam/IndexTTS-1.5/resolve/main/config.yaml -P checkpoints
 ```
 
-> [!NOTE]
-> If you prefer to use the `IndexTTS-1.0` model, please replace `IndexTeam/IndexTTS-1.5` with `IndexTeam/IndexTTS` in the above commands.
-
-
 4. Run test script:
 
+Do a quick test run
 
 ```bash
-# Please put your prompt audio in 'test_data' and rename it to 'input.wav'
-python indextts/infer.py
+from indextts.infer_indextts2 import IndexTTS2
+tts = IndexTTS2(cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=False, use_cuda_kernel=False)
+text="这是一个有很好情感表现力的自回归TTS大模型，它还可以控制合成语音的时长，希望能受到大家的喜欢。"
+tts.infer(spk_audio_prompt='test_data/input.wav', text=text, output_path="gen.wav", verbose=True)
 ```
+
+额外指定一个情感参考音频 Specify an additional emotional reference audio
+
+```bash
+from indextts.infer_indextts2 import IndexTTS2
+tts = IndexTTS2(cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=False, use_cuda_kernel=False)
+text="这是一个有很好情感表现力的自回归TTS大模型，它还可以控制合成语音的时长，希望能受到大家的喜欢。"
+tts.infer(spk_audio_prompt='test_data/input.wav', text=text, output_path="gen.wav", emo_audio_prompt="test_data/low.wav", verbose=True)
+```
+
+当指定情感参考音频时，还可以额外指定参数emo_alpha，emo_alpha代表参考情感音频的程度，默认为1.0
+
+```bash
+from indextts.infer_indextts2 import IndexTTS2
+tts = IndexTTS2(cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=False, use_cuda_kernel=False)
+text="这是一个有很好情感表现力的自回归TTS大模型，它还可以控制合成语音的时长，希望能受到大家的喜欢。"
+tts.infer(spk_audio_prompt='test_data/input.wav', text=text, output_path="gen.wav", emo_audio_prompt="test_data/low.wav", emo_alpha=0.5, verbose=True)
+```
+
+
+也可以不指定情感参考音频，而给定各基础情感(喜|怒|哀|惧|厌恶|低落|惊喜|平静)的强度，包括8个float的list
+
+```bash
+from indextts.infer_indextts2 import IndexTTS2
+tts = IndexTTS2(cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=False, use_cuda_kernel=False)
+text="这是一个有很好情感表现力的自回归TTS大模型，它还可以控制合成语音的时长，希望能受到大家的喜欢。"
+tts.infer(spk_audio_prompt='test_data/input.wav', text=text, output_path="gen.wav", emo_vector=[0, 1.0, 0, 0, 0, 0, 0, 0], verbose=True)
+```
+
+可以使用文本情感描述指导情感的合成，使用参数use_emo_text
+
+```bash
+from indextts.infer_indextts2 import IndexTTS2
+tts = IndexTTS2(cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=False, use_cuda_kernel=False)
+text="这是一个有很好情感表现力的自回归TTS大模型，它还可以控制合成语音的时长，希望能受到大家的喜欢。"
+tts.infer(spk_audio_prompt='test_data/input.wav', text=text, output_path="gen.wav", use_emo_text=True, verbose=True)
+```
+
+当不指定emo_text，根据输入的合成文案内容推理，指定时根据指定的文案推
+
+```bash
+from indextts.infer_indextts2 import IndexTTS2
+tts = IndexTTS2(cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=False, use_cuda_kernel=False)
+text="这是一个有很好情感表现力的自回归TTS大模型，它还可以控制合成语音的时长，希望能受到大家的喜欢。"
+tts.infer(spk_audio_prompt='test_data/input.wav', text=text, output_path="gen.wav", use_emo_text=True, emo_text='有一丢丢伤心', verbose=True)
+```
+
+
+
+Specify the duration of the synthesized speech
+
+```bash
+from indextts.infer_indextts2 import IndexTTS2
+tts = IndexTTS2(cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=False, use_cuda_kernel=False)
+text="这是一个有很好情感表现力的自回归TTS大模型，它还可以控制合成语音的时长，希望能受到大家的喜欢。"
+tts.infer(spk_audio_prompt='test_data/input.wav', text=text, output_path="gen.wav", use_speed=True, target_dur=7.5, verbose=True)
+```
+
 
 5. Use as command line tool:
 
 ```bash
 # Make sure pytorch has been installed before running this command
+pip install -e .
 indextts "大家好，我现在正在bilibili 体验 ai 科技，说实话，来之前我绝对想不到！AI技术已经发展到这样匪夷所思的地步了！" \
   --voice reference_voice.wav \
   --model_dir checkpoints \
@@ -207,15 +183,27 @@ indextts --help
 
 #### Web Demo
 ```bash
-pip install -e ".[webui]" --no-build-isolation
+pip install -e ".[webui]"
 python webui.py
 
 # use another model version:
 python webui.py --model_dir IndexTTS-1.5
 ```
-
 Open your browser and visit `http://127.0.0.1:7860` to see the demo.
 
+#### Note for Windows Users
+
+On Windows, you may encounter [an error](https://github.com/index-tts/index-tts/issues/61) when installing `pynini`:
+`ERROR: Failed building wheel for pynini`
+
+In this case, please install `pynini` via `conda`:
+
+```bash
+# after conda activate index-tts
+conda install -c conda-forge pynini==2.1.5
+pip install WeTextProcessing==1.0.3
+pip install -e ".[webui]"
+```
 
 #### Sample Code
 ```python

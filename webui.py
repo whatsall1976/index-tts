@@ -5,6 +5,7 @@ import threading
 import time
 
 import warnings
+
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=UserWarning)
 
@@ -16,7 +17,7 @@ import argparse
 parser = argparse.ArgumentParser(description="IndexTTS WebUI")
 parser.add_argument("--verbose", action="store_true", default=False, help="Enable verbose mode")
 parser.add_argument("--port", type=int, default=7860, help="Port to run the web UI on")
-parser.add_argument("--host", type=str, default="127.0.0.1", help="Host to run the web UI on")
+parser.add_argument("--host", type=str, default="0.0.0.0", help="Host to run the web UI on")
 parser.add_argument("--model_dir", type=str, default="checkpoints", help="Model checkpoints directory")
 cmd_args = parser.parse_args()
 
@@ -25,10 +26,11 @@ if not os.path.exists(cmd_args.model_dir):
     sys.exit(1)
 
 for file in [
-    "bigvgan_generator.pth",
     "bpe.model",
     "gpt.pth",
     "config.yaml",
+    "s2mel.pth",
+    "wav2vec2bert_stats.pt"
 ]:
     file_path = os.path.join(cmd_args.model_dir, file)
     if not os.path.exists(file_path):
@@ -37,17 +39,19 @@ for file in [
 
 import gradio as gr
 
-from indextts.infer import IndexTTS
+from indextts.infer_indextts2 import IndexTTS2
+from indextts import infer_indextts2
 from tools.i18n.i18n import I18nAuto
-
+from modelscope.hub import api
 i18n = I18nAuto(language="zh_CN")
 MODE = 'local'
-tts = IndexTTS(model_dir=cmd_args.model_dir, cfg_path=os.path.join(cmd_args.model_dir, "config.yaml"),)
+tts = IndexTTS2(model_dir=cmd_args.model_dir, cfg_path=os.path.join(cmd_args.model_dir, "config.yaml"),is_fp16=False)
 
 
 os.makedirs("outputs/tasks",exist_ok=True)
 os.makedirs("prompts",exist_ok=True)
 
+MAX_LENGTH_TO_USE_SPEED = 70
 with open("tests/cases.jsonl", "r", encoding="utf-8") as f:
     example_cases = []
     for line in f:
@@ -58,7 +62,59 @@ with open("tests/cases.jsonl", "r", encoding="utf-8") as f:
         example_cases.append([os.path.join("tests", example.get("prompt_audio", "sample_prompt.wav")),
                               example.get("text"), ["普通推理", "批次推理"][example.get("infer_mode", 0)]])
 
-def gen_single(prompt, text, infer_mode, max_text_tokens_per_sentence=120, sentences_bucket_max_size=4,
+def validate_duration(duration):
+    try:
+        duration_float = float(duration)
+        if duration_float <= 0:
+            return None, "时长必须为正数"
+        return duration_float, None
+    except ValueError:
+        return None, "请输入有效的浮点数"
+
+def toggle_emotion_controls(use_emotion_reference):
+    if use_emotion_reference:
+        return (gr.update(visible=True), gr.update(visible=True),
+                gr.update(value=False),
+                gr.update(value=False))
+    else:
+        return (gr.update(visible=False), gr.update(visible=False),
+                gr.update(),
+                gr.update()
+                )
+
+def toggle_emotion_vector(use_emotion_vector):
+    if use_emotion_vector:
+        return (gr.update(visible=True),
+                gr.update(value=False),
+                gr.update(value=False))
+    else:
+        return (gr.update(visible=False),
+         gr.update(),
+         gr.update())
+
+def toggle_emotion_text(use_emo_text):
+    if use_emo_text:
+        return (gr.update(visible=True),
+                gr.update(value=False),
+                gr.update(value=False))
+    else:
+        return (gr.update(visible=False),
+         gr.update(),
+         gr.update())
+
+def toggle_duration(use_duration):
+    if use_duration:
+        return gr.update(visible=True),gr.update(visible=True)
+    else:
+        return gr.update(visible=False),gr.update(visible=False)
+
+def gen_single(prompt, text,
+               emo_ref_path, emo_weight,
+               use_duration, duration,
+               use_emotion_reference, use_emotion_vector,
+               vec1, vec2, vec3, vec4, vec5, vec6, vec7, vec8,
+               use_emo_text,emo_text,
+               infer_mode, max_text_tokens_per_sentence=120, sentences_bucket_max_size=4,
                 *args, progress=gr.Progress()):
     output_path = None
     if not output_path:
@@ -79,16 +135,24 @@ def gen_single(prompt, text, infer_mode, max_text_tokens_per_sentence=120, sente
         # "typical_sampling": bool(typical_sampling),
         # "typical_mass": float(typical_mass),
     }
+    emo_weight = emo_weight if (use_emotion_reference and emo_ref_path) else 1.0
+    vec = [vec1, vec2, vec3, vec4, vec5, vec6, vec7, vec8] if use_emotion_vector else None
     if infer_mode == "普通推理":
-        output = tts.infer(prompt, text, output_path, verbose=cmd_args.verbose,
+        output = tts.infer(spk_audio_prompt=prompt, text=text,
+                           output_path=output_path,
+                           emo_audio_prompt=emo_ref_path, emo_alpha=emo_weight,
+                           emo_vector=vec,
+                           use_emo_text=use_emo_text, emo_text=emo_text,
+                           use_speed=use_duration,target_dur=float(duration),
+                           verbose=cmd_args.verbose,
                            max_text_tokens_per_sentence=int(max_text_tokens_per_sentence),
                            **kwargs)
-    else:
-        # 批次推理
-        output = tts.infer_fast(prompt, text, output_path, verbose=cmd_args.verbose,
-            max_text_tokens_per_sentence=int(max_text_tokens_per_sentence),
-            sentences_bucket_max_size=(sentences_bucket_max_size),
-            **kwargs)
+    # else:
+    #     # 批次推理
+    #     output = tts.infer_fast(prompt, text, output_path, verbose=cmd_args.verbose,
+    #         max_text_tokens_per_sentence=int(max_text_tokens_per_sentence),
+    #         sentences_bucket_max_size=(sentences_bucket_max_size),
+    #         **kwargs)
     return gr.update(value=output,visible=True)
 
 def update_prompt_audio():
@@ -118,13 +182,55 @@ with gr.Blocks(title="IndexTTS Demo") as demo:
                 infer_mode = gr.Radio(choices=["普通推理", "批次推理"], label="推理模式",info="批次推理：更适合长句，性能翻倍",value="普通推理")        
                 gen_button = gr.Button("生成语音", key="gen_button",interactive=True)
             output_audio = gr.Audio(label="生成结果", visible=True,key="output_audio")
+        with gr.Accordion("功能设置"):
+            # 时长控制部分
+            with gr.Row():
+                with gr.Column():
+                    use_duration = gr.Checkbox(label="使用时长控制", value=False)
+                    duration_tip = gr.Textbox(show_label=False,value="建议时长：",interactive=False,visible=False)
+                duration = gr.Textbox(label="合成时长(秒)", value="1.0", visible=False)
+
+            # 情感控制选项部分
+            with gr.Row():
+                gr.Markdown("### 情感控制方式")
+
+            with gr.Row():
+                use_emotion_reference = gr.Checkbox(label="使用情感参考音频", value=True)
+                use_emotion_vector = gr.Checkbox(label="使用情感向量控制", value=False)
+                use_emotion_text = gr.Checkbox(label="使用情感描述文本控制",value=False)
+        # 情感参考音频部分
+        with gr.Group(visible=True) as emotion_reference_group:
+            with gr.Row():
+                emo_upload = gr.Audio(label="上传情感参考音频", type="filepath")
+
+            with gr.Row():
+                emo_weight = gr.Slider(label="情感权重", minimum=0.0, maximum=1.6, value=0.5, step=0.01)
+
+        # 情感向量控制部分
+        with gr.Group(visible=False) as emotion_vector_group:
+            with gr.Row():
+                with gr.Column():
+                    vec1 = gr.Slider(label="喜", minimum=0.0, maximum=1.4, value=0.0, step=0.05)
+                    vec2 = gr.Slider(label="怒", minimum=0.0, maximum=1.4, value=0.0, step=0.05)
+                    vec3 = gr.Slider(label="哀", minimum=0.0, maximum=1.4, value=0.0, step=0.05)
+                    vec4 = gr.Slider(label="惧", minimum=0.0, maximum=1.4, value=0.0, step=0.05)
+                with gr.Column():
+                    vec5 = gr.Slider(label="厌恶", minimum=0.0, maximum=1.4, value=0.0, step=0.05)
+                    vec6 = gr.Slider(label="低落", minimum=0.0, maximum=1.4, value=0.0, step=0.05)
+                    vec7 = gr.Slider(label="惊喜", minimum=0.0, maximum=1.4, value=0.0, step=0.05)
+                    vec8 = gr.Slider(label="平静", minimum=0.0, maximum=1.4, value=0.0, step=0.05)
+
+        with gr.Group(visible=False) as emo_text_group:
+            with gr.Row():
+                emo_text = gr.Textbox(label="情感描述文本", placeholder="请输入情感描述文本", value="", info="例如：高兴，愤怒，悲伤等")
+
         with gr.Accordion("高级生成参数设置", open=False):
             with gr.Row():
                 with gr.Column(scale=1):
                     gr.Markdown("**GPT2 采样设置** _参数会影响音频多样性和生成速度详见[Generation strategies](https://huggingface.co/docs/transformers/main/en/generation_strategies)_")
                     with gr.Row():
                         do_sample = gr.Checkbox(label="do_sample", value=True, info="是否进行采样")
-                        temperature = gr.Slider(label="temperature", minimum=0.1, maximum=2.0, value=1.0, step=0.1)
+                        temperature = gr.Slider(label="temperature", minimum=0.1, maximum=2.0, value=0.8, step=0.1)
                     with gr.Row():
                         top_p = gr.Slider(label="top_p", minimum=0.0, maximum=1.0, value=0.8, step=0.01)
                         top_k = gr.Slider(label="top_k", minimum=0, maximum=100, value=30, step=1)
@@ -132,7 +238,7 @@ with gr.Blocks(title="IndexTTS Demo") as demo:
                     with gr.Row():
                         repetition_penalty = gr.Number(label="repetition_penalty", precision=None, value=10.0, minimum=0.1, maximum=20.0, step=0.1)
                         length_penalty = gr.Number(label="length_penalty", precision=None, value=0.0, minimum=-2.0, maximum=2.0, step=0.1)
-                    max_mel_tokens = gr.Slider(label="max_mel_tokens", value=600, minimum=50, maximum=tts.cfg.gpt.max_mel_tokens, step=10, info="生成Token最大数量，过小导致音频被截断", key="max_mel_tokens")
+                    max_mel_tokens = gr.Slider(label="max_mel_tokens", value=1500, minimum=50, maximum=tts.cfg.gpt.max_mel_tokens, step=10, info="生成Token最大数量，过小导致音频被截断", key="max_mel_tokens")
                     # with gr.Row():
                     #     typical_sampling = gr.Checkbox(label="typical_sampling", value=False, info="不建议使用")
                     #     typical_mass = gr.Slider(label="typical_mass", value=0.9, minimum=0.0, maximum=1.0, step=0.1)
@@ -175,32 +281,93 @@ with gr.Blocks(title="IndexTTS Demo") as demo:
                 sentence_str = ''.join(s)
                 tokens_count = len(s)
                 data.append([i, sentence_str, tokens_count])
-            
-            return {
-                sentences_preview: gr.update(value=data, visible=True, type="array"),
-            }
+            min_dur, max_dur = infer_indextts2.get_text_tts_dur(text)
+            if len(text) > MAX_LENGTH_TO_USE_SPEED:
+                return {
+                    sentences_preview: gr.update(value=data, visible=True, type="array"),
+                    duration_tip: gr.update(value=f"建议时长：{min_dur:.2f} - {max_dur:.2f} 秒"),
+                    duration:gr.update(value=(min_dur+max_dur)/2.0),
+                    use_duration:gr.update(value=False,interactive=False)
+                }
+            else:
+                return {
+                    sentences_preview: gr.update(value=data, visible=True, type="array"),
+                    duration_tip: gr.update(value=f"建议时长：{min_dur:.2f} - {max_dur:.2f} 秒"),
+                    duration: gr.update(value=(min_dur + max_dur) / 2.0),
+                    use_duration: gr.update(interactive=True)
+                }
         else:
             df = pd.DataFrame([], columns=["序号", "分句内容", "Token数"])
             return {
-                sentences_preview: gr.update(value=df)
+                sentences_preview: gr.update(value=df),
+                duration_tip: gr.update(value="建议时长："),
+                duration:gr.update(value=1.0),
+                use_duration: gr.update(interactive=True)
             }
+       # 事件绑定
+    def on_infer_mode_change(infer_mode):
+        if infer_mode == "批次推理":
+            return gr.update(value=False,interactive=False)
+        else:
+            return gr.update(interactive=True)
+
+    infer_mode.change(
+        on_infer_mode_change,
+        inputs=[infer_mode],
+        outputs=[use_duration]
+    )
+    use_emotion_reference.change(
+        toggle_emotion_controls,
+        inputs=[use_emotion_reference],
+        outputs=[
+            emotion_reference_group,
+            emo_weight,
+            use_emotion_vector,
+            use_emotion_text,
+        ]
+    )
+
+    use_emotion_vector.change(
+        toggle_emotion_vector,
+        inputs=[use_emotion_vector],
+        outputs=[
+            emotion_vector_group,
+            use_emotion_reference,
+            use_emotion_text,
+        ]
+    )
+    use_emotion_text.change(
+        toggle_emotion_text,
+        inputs=[use_emotion_text],
+        outputs=[
+            emo_text_group,
+            use_emotion_reference,
+            use_emotion_vector,
+        ]
+    )
+
+    use_duration.change(toggle_duration, inputs=[use_duration], outputs=[duration,duration_tip])
 
     input_text_single.change(
         on_input_text_change,
         inputs=[input_text_single, max_text_tokens_per_sentence],
-        outputs=[sentences_preview]
+        outputs=[sentences_preview, duration_tip,duration,use_duration]
     )
     max_text_tokens_per_sentence.change(
         on_input_text_change,
         inputs=[input_text_single, max_text_tokens_per_sentence],
-        outputs=[sentences_preview]
+        outputs=[sentences_preview, duration_tip,duration,use_duration]
     )
     prompt_audio.upload(update_prompt_audio,
                          inputs=[],
                          outputs=[gen_button])
 
     gen_button.click(gen_single,
-                     inputs=[prompt_audio, input_text_single, infer_mode,
+                     inputs=[prompt_audio, input_text_single, emo_upload, emo_weight,
+                            use_duration, duration, use_emotion_reference, use_emotion_vector,
+                            vec1, vec2, vec3, vec4, vec5, vec6, vec7, vec8,
+                             use_emotion_text,emo_text,
+                             infer_mode,
                              max_text_tokens_per_sentence, sentences_bucket_max_size,
                              *advanced_params,
                      ],
