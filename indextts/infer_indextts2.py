@@ -164,7 +164,7 @@ class QwenEmotion:
 
 class IndexTTS2:
     def __init__(
-        self, cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=True, device=None, use_cuda_kernel=None,
+        self, cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=True, device=None, use_cuda_kernel=None,use_deepspeed=False
     ):
         """
         Args:
@@ -219,7 +219,7 @@ class IndexTTS2:
 
             self.gpt.post_init_gpt2_config(use_deepspeed=use_deepspeed, kv_cache=True, half=True)
         else:
-            self.gpt.post_init_gpt2_config(use_deepspeed=True, kv_cache=True, half=False)
+            self.gpt.post_init_gpt2_config(use_deepspeed=use_deepspeed, kv_cache=True, half=False)
 
         if self.use_cuda_kernel:
             # preload the CUDA kernel for BigVGAN
@@ -391,7 +391,7 @@ class IndexTTS2:
     def infer(self, spk_audio_prompt, text, output_path,
               emo_audio_prompt=None, emo_alpha=1.0,
               emo_vector=None,
-              use_emo_text=False, emo_text=None,
+              use_emo_text=False, emo_text=None,emo_text_weight=1.0,
               use_speed=False, target_dur=None,
               verbose=False, max_text_tokens_per_sentence=120, **generation_kwargs):
         print(">> start inference...")
@@ -409,7 +409,9 @@ class IndexTTS2:
             if emo_text is None:
                 emo_text = text
             emo_dict, content = self.qwen_emo.inference(emo_text)
-            print(emo_dict)
+            if emo_text_weight != 1.0:
+                emo_dict = { k: v * emo_text_weight for k, v in emo_dict.items() }
+            print(f">> weighted emo_dict: {emo_dict}")
             emo_vector = list(emo_dict.values())
 
 
@@ -470,11 +472,11 @@ class IndexTTS2:
                                                                     n_quantizers=3,
                                                                     f0=None)[0]
 
-            self.cache_spk_cond = spk_cond_emb
-            self.cache_s2mel_style = style
-            self.cache_s2mel_prompt = prompt_condition
+            self.cache_spk_cond = spk_cond_emb.detach()
+            self.cache_s2mel_style = style.detach()
+            self.cache_s2mel_prompt = prompt_condition.detach()
             self.cache_spk_audio_prompt = spk_audio_prompt
-            self.cache_mel = ref_mel
+            self.cache_mel = ref_mel.detach()
         else:
             style = self.cache_s2mel_style
             prompt_condition = self.cache_s2mel_prompt 
@@ -490,7 +492,7 @@ class IndexTTS2:
             emo_attention_mask = emo_attention_mask.to(self.device)
             emo_cond_emb = self.get_emb(emo_input_features, emo_attention_mask)
 
-            self.cache_emo_cond = emo_cond_emb
+            self.cache_emo_cond = emo_cond_emb.detach()
             self.cache_emo_audio_prompt = emo_audio_prompt
         else:
             emo_cond_emb = self.cache_emo_cond
@@ -681,11 +683,15 @@ class IndexTTS2:
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
             torchaudio.save(output_path, wav.type(torch.int16), sampling_rate)
             print(">> wav file saved to:", output_path)
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             return output_path
         else:
             # 返回以符合Gradio的格式要求
             wav_data = wav.type(torch.int16)
             wav_data = wav_data.numpy().T
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             return (sampling_rate, wav_data)
 
 
