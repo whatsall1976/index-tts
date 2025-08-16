@@ -516,8 +516,8 @@ class IndexTTS:
         if output_path:
             # 直接保存音频到指定路径中
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            torchaudio.save(output_path, wav.type(torch.int16), sampling_rate)
-            print(">> wav file saved to:", output_path)
+            torchaudio.save(output_path, wav.float() / 32767.0, sampling_rate, format="mp3")
+            print(">> mp3 file saved to:", output_path)
             
             # Extract and save individual sentence audio files
             if len(sentence_boundaries) > 1:
@@ -525,8 +525,8 @@ class IndexTTS:
                 print(f">> Extracting {len(sentence_boundaries)} individual sentence audio files...")
                 for i, (start, end) in enumerate(sentence_boundaries):
                     sentence_wav = wav[:, start:end]
-                    sentence_path = f"{base_path}_sentence_{i+1}.wav"
-                    torchaudio.save(sentence_path, sentence_wav.type(torch.int16), sampling_rate)
+                    sentence_path = f"{base_path}_sentence_{i+1}.mp3"
+                    torchaudio.save(sentence_path, sentence_wav.float() / 32767.0, sampling_rate, format="mp3")
                     sentence_duration = sentence_wav.shape[1] / sampling_rate
                     print(f">> Sentence {i+1} saved to: {sentence_path} (duration: {sentence_duration:.2f}s)")
             
@@ -688,11 +688,12 @@ class IndexTTS:
             # 直接保存音频到指定路径中
             if os.path.isfile(output_path):
                 os.remove(output_path)
-                print(">> remove old wav file:", output_path)
+                print(">> remove old audio file:", output_path)
             if os.path.dirname(output_path) != "":
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            torchaudio.save(output_path, wav.type(torch.int16), sampling_rate)
-            print(">> wav file saved to:", output_path)
+            
+            torchaudio.save(output_path, wav.float() / 32767.0, sampling_rate, format="mp3")
+            print(">> mp3 file saved to:", output_path)
             return output_path
         else:
             # 返回以符合Gradio的格式要求
@@ -708,4 +709,4 @@ if __name__ == "__main__":
     text="There is a vehicle arriving in dock number 7?"
 
     tts = IndexTTS(cfg_path="checkpoints/config.yaml", model_dir="checkpoints", is_fp16=True, use_cuda_kernel=False)
-    tts.infer(audio_prompt=prompt_wav, text=text, output_path="gen.wav", verbose=True)
+    tts.infer(audio_prompt=prompt_wav, text=text, output_path="gen.mp3", verbose=True)
