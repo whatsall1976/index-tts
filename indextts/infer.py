@@ -439,93 +439,57 @@ class IndexTTS:
                         gpt_forward_time += time.perf_counter() - m_start_time
                         all_latents.append(latent)
         del all_batch_codes, all_text_tokens, all_sentences
-        # bigvgan chunk
-        chunk_size = 2
+        # Process each sentence individually for proper sentence boundaries
         all_latents = [all_latents[all_idxs.index(i)] for i in range(len(all_latents))]
         if verbose:
             print(">> all_latents:", len(all_latents))
             print("  latents length:", [l.shape[1] for l in all_latents])
-        chunk_latents = [all_latents[i : i + chunk_size] for i in range(0, len(all_latents), chunk_size)]
-        chunk_length = len(chunk_latents)
-        latent_length = len(all_latents)
 
-        # bigvgan chunk decode
+        # bigvgan decode each sentence separately
         self._set_gr_progress(0.7, "bigvgan decode...")
-        tqdm_progress = tqdm(total=latent_length, desc="bigvgan")
-        for items in chunk_latents:
-            tqdm_progress.update(len(items))
-            latent = torch.cat(items, dim=1)
+        tqdm_progress = tqdm(total=len(all_latents), desc="bigvgan")
+        for latent in all_latents:
+            tqdm_progress.update(1)
             with torch.no_grad():
                 with torch.amp.autocast(latent.device.type, enabled=self.dtype is not None, dtype=self.dtype):
                     m_start_time = time.perf_counter()
                     wav, _ = self.bigvgan(latent, auto_conditioning.transpose(1, 2))
                     bigvgan_time += time.perf_counter() - m_start_time
                     wav = wav.squeeze(1)
-                    pass
             wav = torch.clamp(32767 * wav, -32767.0, 32767.0)
             wavs.append(wav.cpu()) # to cpu before saving
 
         # clear cache
         tqdm_progress.close()  # 确保进度条被关闭
-        del all_latents, chunk_latents
+        del all_latents
         end_time = time.perf_counter()
         self.torch_empty_cache()
 
         # wav audio output
         self._set_gr_progress(0.9, "save audio...")
         
-        # Implement silence-based separation for individual sentence extraction
-        sentence_boundaries = []
-        if len(wavs) > 1:
-            silence_duration = 0.5  # 0.5 seconds
-            silence_samples = int(silence_duration * sampling_rate)
-            silence = torch.zeros(1, silence_samples, dtype=wavs[0].dtype, device=wavs[0].device)
-            
-            # Track sentence boundaries
-            current_pos = 0
-            
-            wavs_with_silence = []
-            for i, wav_chunk in enumerate(wavs):
-                start_pos = current_pos
-                end_pos = current_pos + wav_chunk.shape[1]
-                sentence_boundaries.append((start_pos, end_pos))
-                
-                wavs_with_silence.append(wav_chunk)
-                current_pos = end_pos
-                
-                if i < len(wavs) - 1:
-                    wavs_with_silence.append(silence)
-                    current_pos += silence_samples
-            
-            wav = torch.cat(wavs_with_silence, dim=1)
-        else:
-            # Single sentence case
-            wav = torch.cat(wavs, dim=1)
-            sentence_boundaries.append((0, wav.shape[1]))
-        
-        wav_length = wav.shape[-1] / sampling_rate
+        # Each wav in wavs is now a separate sentence, no chunking
+        wav_length = sum(w.shape[-1] for w in wavs) / sampling_rate
         print(f">> Reference audio length: {cond_mel_frame * 256 / sampling_rate:.2f} seconds")
         print(f">> gpt_gen_time: {gpt_gen_time:.2f} seconds")
         print(f">> gpt_forward_time: {gpt_forward_time:.2f} seconds")
         print(f">> bigvgan_time: {bigvgan_time:.2f} seconds")
         print(f">> Total fast inference time: {end_time - start_time:.2f} seconds")
         print(f">> Generated audio length: {wav_length:.2f} seconds")
-        print(f">> [fast] bigvgan chunk_length: {chunk_length}")
+        print(f">> [fast] sentences processed: {len(wavs)}")
         print(f">> [fast] batch_num: {all_batch_num} bucket_max_size: {bucket_max_size}", f"bucket_count: {bucket_count}" if bucket_max_size > 1 else "")
         print(f">> [fast] RTF: {(end_time - start_time) / wav_length:.4f}")
 
         # save audio
-        wav = wav.cpu()  # to cpu
         if output_path:
             # Save individual sentence audio files only
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             base_path = os.path.splitext(output_path)[0]
-            print(f">> Saving {len(sentence_boundaries)} individual sentence audio files...")
-            for i, (start, end) in enumerate(sentence_boundaries):
-                sentence_wav = wav[:, start:end]
+            print(f">> Saving {len(wavs)} individual sentence audio files...")
+            for i, wav_chunk in enumerate(wavs):
                 sentence_path = f"{base_path}_sentence_{i+1}.mp3"
-                torchaudio.save(sentence_path, sentence_wav.float() / 32767.0, sampling_rate, format="mp3")
-                sentence_duration = sentence_wav.shape[1] / sampling_rate
+                torchaudio.save(sentence_path, wav_chunk.float() / 32767.0, sampling_rate, format="mp3")
+                sentence_duration = wav_chunk.shape[1] / sampling_rate
                 print(f">> Sentence {i+1} saved to: {sentence_path} (duration: {sentence_duration:.2f}s)")
             
             return output_path
