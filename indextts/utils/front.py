@@ -422,6 +422,17 @@ class TextTokenizer:
         # "▁!", # unk
         "▁?",
         "▁...", # ellipsis
+        # Chinese punctuation
+        "。",
+        "！",
+        "？",
+        "；",
+        "：",
+        "▁。",
+        "▁！", 
+        "▁？",
+        "▁；",
+        "▁：",
     ]
     def split_sentences(self, tokenized: List[str], max_tokens_per_sentence=120) -> List[List[str]]:
         return TextTokenizer.split_sentences_by_token(
