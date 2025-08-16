@@ -362,15 +362,12 @@ class TextTokenizer:
             current_sentence_tokens_len += 1
             # Always split at punctuation marks first, regardless of length
             if token in split_tokens and current_sentence_tokens_len > 2:
-                print(f"DEBUG: Found split token '{token}' at position {i}, sentence length: {current_sentence_tokens_len}")
                 if i < len(tokenized_str) - 1:
                     if tokenized_str[i + 1] in ["'", "▁'"]:
                         # 后续token是'，则不切分
-                        print(f"DEBUG: Skipping split due to quote after '{token}'")
                         i += 1
                         current_sentence.append(tokenized_str[i])
                         current_sentence_tokens_len += 1
-                print(f"DEBUG: Splitting sentence at '{token}', sentence: {current_sentence}")
                 sentences.append(current_sentence)
                 current_sentence = []
                 current_sentence_tokens_len = 0
@@ -412,18 +409,8 @@ class TextTokenizer:
         if current_sentence_tokens_len > 0:
             assert current_sentence_tokens_len <= max_tokens_per_sentence
             sentences.append(current_sentence)
-        # 如果相邻的句子加起来长度小于最大限制，则合并
-        merged_sentences = []
-        for sentence in sentences:
-            if len(sentence) == 0:
-                continue
-            if len(merged_sentences) == 0:
-                merged_sentences.append(sentence)
-            elif len(merged_sentences[-1]) + len(sentence) <= max_tokens_per_sentence:
-                merged_sentences[-1] = merged_sentences[-1] + sentence
-            else:
-                merged_sentences.append(sentence)
-        return merged_sentences
+        # Don't merge sentences that were split by punctuation marks
+        return sentences
 
     punctuation_marks_tokens = [
         ".",
