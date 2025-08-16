@@ -483,7 +483,9 @@ class IndexTTS:
         # save audio
         if output_path:
             # Save individual sentence audio files only
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
+            output_dir = os.path.dirname(output_path)
+            if output_dir:  # Only create directory if it's not empty
+                os.makedirs(output_dir, exist_ok=True)
             base_path = os.path.splitext(output_path)[0]
             print(f">> Saving {len(wavs)} individual sentence audio files...")
             for i, wav_chunk in enumerate(wavs):
