@@ -470,7 +470,36 @@ class IndexTTS:
 
         # wav audio output
         self._set_gr_progress(0.9, "save audio...")
-        wav = torch.cat(wavs, dim=1)
+        
+        # Implement silence-based separation for individual sentence extraction
+        sentence_boundaries = []
+        if len(wavs) > 1:
+            silence_duration = 0.5  # 0.5 seconds
+            silence_samples = int(silence_duration * sampling_rate)
+            silence = torch.zeros(1, silence_samples, dtype=wavs[0].dtype, device=wavs[0].device)
+            
+            # Track sentence boundaries
+            current_pos = 0
+            
+            wavs_with_silence = []
+            for i, wav_chunk in enumerate(wavs):
+                start_pos = current_pos
+                end_pos = current_pos + wav_chunk.shape[1]
+                sentence_boundaries.append((start_pos, end_pos))
+                
+                wavs_with_silence.append(wav_chunk)
+                current_pos = end_pos
+                
+                if i < len(wavs) - 1:
+                    wavs_with_silence.append(silence)
+                    current_pos += silence_samples
+            
+            wav = torch.cat(wavs_with_silence, dim=1)
+        else:
+            # Single sentence case
+            wav = torch.cat(wavs, dim=1)
+            sentence_boundaries.append((0, wav.shape[1]))
+        
         wav_length = wav.shape[-1] / sampling_rate
         print(f">> Reference audio length: {cond_mel_frame * 256 / sampling_rate:.2f} seconds")
         print(f">> gpt_gen_time: {gpt_gen_time:.2f} seconds")
@@ -489,6 +518,18 @@ class IndexTTS:
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
             torchaudio.save(output_path, wav.type(torch.int16), sampling_rate)
             print(">> wav file saved to:", output_path)
+            
+            # Extract and save individual sentence audio files
+            if len(sentence_boundaries) > 1:
+                base_path = os.path.splitext(output_path)[0]
+                print(f">> Extracting {len(sentence_boundaries)} individual sentence audio files...")
+                for i, (start, end) in enumerate(sentence_boundaries):
+                    sentence_wav = wav[:, start:end]
+                    sentence_path = f"{base_path}_sentence_{i+1}.wav"
+                    torchaudio.save(sentence_path, sentence_wav.type(torch.int16), sampling_rate)
+                    sentence_duration = sentence_wav.shape[1] / sampling_rate
+                    print(f">> Sentence {i+1} saved to: {sentence_path} (duration: {sentence_duration:.2f}s)")
+            
             return output_path
         else:
             # 返回以符合Gradio的格式要求
