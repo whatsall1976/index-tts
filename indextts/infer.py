@@ -514,21 +514,16 @@ class IndexTTS:
         # save audio
         wav = wav.cpu()  # to cpu
         if output_path:
-            # 直接保存音频到指定路径中
+            # Save individual sentence audio files only
             os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            torchaudio.save(output_path, wav.float() / 32767.0, sampling_rate, format="mp3")
-            print(">> mp3 file saved to:", output_path)
-            
-            # Extract and save individual sentence audio files
-            if len(sentence_boundaries) > 1:
-                base_path = os.path.splitext(output_path)[0]
-                print(f">> Extracting {len(sentence_boundaries)} individual sentence audio files...")
-                for i, (start, end) in enumerate(sentence_boundaries):
-                    sentence_wav = wav[:, start:end]
-                    sentence_path = f"{base_path}_sentence_{i+1}.mp3"
-                    torchaudio.save(sentence_path, sentence_wav.float() / 32767.0, sampling_rate, format="mp3")
-                    sentence_duration = sentence_wav.shape[1] / sampling_rate
-                    print(f">> Sentence {i+1} saved to: {sentence_path} (duration: {sentence_duration:.2f}s)")
+            base_path = os.path.splitext(output_path)[0]
+            print(f">> Saving {len(sentence_boundaries)} individual sentence audio files...")
+            for i, (start, end) in enumerate(sentence_boundaries):
+                sentence_wav = wav[:, start:end]
+                sentence_path = f"{base_path}_sentence_{i+1}.mp3"
+                torchaudio.save(sentence_path, sentence_wav.float() / 32767.0, sampling_rate, format="mp3")
+                sentence_duration = sentence_wav.shape[1] / sampling_rate
+                print(f">> Sentence {i+1} saved to: {sentence_path} (duration: {sentence_duration:.2f}s)")
             
             return output_path
         else:
@@ -685,15 +680,21 @@ class IndexTTS:
         # save audio
         wav = wav.cpu()  # to cpu
         if output_path:
-            # 直接保存音频到指定路径中
-            if os.path.isfile(output_path):
-                os.remove(output_path)
-                print(">> remove old audio file:", output_path)
+            # Save individual sentence audio files only
             if os.path.dirname(output_path) != "":
                 os.makedirs(os.path.dirname(output_path), exist_ok=True)
             
-            torchaudio.save(output_path, wav.float() / 32767.0, sampling_rate, format="mp3")
-            print(">> mp3 file saved to:", output_path)
+            base_path = os.path.splitext(output_path)[0]
+            print(f">> Saving {len(sentences)} individual sentence audio files...")
+            
+            # For regular infer, we need to extract sentences from the concatenated audio
+            current_pos = 0
+            for i, wav_chunk in enumerate(wavs):
+                sentence_path = f"{base_path}_sentence_{i+1}.mp3"
+                torchaudio.save(sentence_path, wav_chunk.float() / 32767.0, sampling_rate, format="mp3")
+                sentence_duration = wav_chunk.shape[1] / sampling_rate
+                print(f">> Sentence {i+1} saved to: {sentence_path} (duration: {sentence_duration:.2f}s)")
+            
             return output_path
         else:
             # 返回以符合Gradio的格式要求
