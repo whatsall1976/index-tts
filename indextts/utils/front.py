@@ -359,16 +359,19 @@ class TextTokenizer:
             token = tokenized_str[i]
             current_sentence.append(token)
             current_sentence_tokens_len += 1
+            # Always split at punctuation marks first, regardless of length
+            if token in split_tokens and current_sentence_tokens_len > 2:
+                if i < len(tokenized_str) - 1:
+                    if tokenized_str[i + 1] in ["'", "▁'"]:
+                        # 后续token是'，则不切分
+                        current_sentence.append(tokenized_str[i + 1])
+                        i += 1
+                sentences.append(current_sentence)
+                current_sentence = []
+                current_sentence_tokens_len = 0
+                continue
+            # Only worry about max tokens if no punctuation split happened
             if current_sentence_tokens_len <= max_tokens_per_sentence:
-                if token in split_tokens and current_sentence_tokens_len > 2:
-                    if i < len(tokenized_str) - 1:
-                        if tokenized_str[i + 1] in ["'", "▁'"]:
-                            # 后续token是'，则不切分
-                            current_sentence.append(tokenized_str[i + 1])
-                            i += 1
-                    sentences.append(current_sentence)
-                    current_sentence = []
-                    current_sentence_tokens_len = 0
                 continue
             # 如果当前tokens的长度超过最大限制
             if not  ("," in split_tokens or "▁," in split_tokens ) and ("," in current_sentence or "▁," in current_sentence): 
