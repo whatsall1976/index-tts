@@ -1,0 +1,27 @@
+1
+(1) test_tts.py
+>> Reference audio length: 15.91 seconds
+>> gpt_gen_time: 85.76 seconds
+>> gpt_forward_time: 1.86 seconds
+>> bigvgan_time: 5.61 seconds
+>> Total fast inference time: 94.13 seconds
+>> Generated audio length: 39.59 seconds
+>> [fast] sentences processed: 7
+>> [fast] batch_num: 7 bucket_max_size: 4 bucket_count: 2
+>> [fast] RTF: 2.3774
+(2)test_tts_slow.py
+infer_fast time:  82.72 seconds
+infer time:       148.42 seconds
+Speedup:          1.79x
+Fast method files: 7 sentence files
+Slow method files: 7 files
+Fast method sentence files:
+  - output_fast_sentence_1.mp3
+  - output_fast_sentence_2.mp3
+  - output_fast_sentence_3.mp3
+  - output_fast_sentence_4.mp3
+  - output_fast_sentence_5.mp3
+  - output_fast_sentence_6.mp3
+  - output_fast_sentence_7.mp3
+
+>> Test complete!
