@@ -24,7 +24,7 @@ def main():
     tts.infer_fast(
         audio_prompt="./reference.wav",  # Make sure this file exists
         text=test_text, 
-        output_path="output_v1.5.mp3",  # Single concatenated file output
+        output_path="./output_v1.5.mp3",  # Single concatenated file output
         verbose=True
     )
     
