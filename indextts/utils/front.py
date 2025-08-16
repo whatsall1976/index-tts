@@ -355,23 +355,30 @@ class TextTokenizer:
         sentences: List[List[str]] = []
         current_sentence = []
         current_sentence_tokens_len = 0
-        for i in range(len(tokenized_str)):
+        i = 0
+        while i < len(tokenized_str):
             token = tokenized_str[i]
             current_sentence.append(token)
             current_sentence_tokens_len += 1
             # Always split at punctuation marks first, regardless of length
             if token in split_tokens and current_sentence_tokens_len > 2:
+                print(f"DEBUG: Found split token '{token}' at position {i}, sentence length: {current_sentence_tokens_len}")
                 if i < len(tokenized_str) - 1:
                     if tokenized_str[i + 1] in ["'", "▁'"]:
                         # 后续token是'，则不切分
-                        current_sentence.append(tokenized_str[i + 1])
+                        print(f"DEBUG: Skipping split due to quote after '{token}'")
                         i += 1
+                        current_sentence.append(tokenized_str[i])
+                        current_sentence_tokens_len += 1
+                print(f"DEBUG: Splitting sentence at '{token}', sentence: {current_sentence}")
                 sentences.append(current_sentence)
                 current_sentence = []
                 current_sentence_tokens_len = 0
+                i += 1
                 continue
             # Only worry about max tokens if no punctuation split happened
             if current_sentence_tokens_len <= max_tokens_per_sentence:
+                i += 1
                 continue
             # 如果当前tokens的长度超过最大限制
             if not  ("," in split_tokens or "▁," in split_tokens ) and ("," in current_sentence or "▁," in current_sentence): 
@@ -401,6 +408,7 @@ class TextTokenizer:
             sentences.extend(sub_sentences)
             current_sentence = []
             current_sentence_tokens_len = 0
+            i += 1
         if current_sentence_tokens_len > 0:
             assert current_sentence_tokens_len <= max_tokens_per_sentence
             sentences.append(current_sentence)
