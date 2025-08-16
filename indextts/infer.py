@@ -316,6 +316,9 @@ class IndexTTS:
 
         # text_tokens
         text_tokens_list = self.tokenizer.tokenize(text)
+        if verbose:
+            print(">> DEBUG: text_tokens_list:", text_tokens_list)
+            print(">> DEBUG: punctuation marks:", self.tokenizer.punctuation_marks_tokens)
 
         sentences = self.tokenizer.split_sentences(text_tokens_list, max_tokens_per_sentence=max_text_tokens_per_sentence)
         if verbose:
